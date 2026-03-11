@@ -1,0 +1,207 @@
+{
+  "name": "Daily News Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24,
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "node-schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [\n  {\n    json: {\n      name: 'KI & Tech',\n      keywords: 'k%C3%BCnstliche+intelligenz+OR+AI+news+OR+machine+learning',\n      webhook_url: 'DISCORD_WEBHOOK_KI_TECH',\n      color: 5814783\n    }\n  },\n  {\n    json: {\n      name: 'Linux & Open Source',\n      keywords: 'Linux+open+source+news',\n      webhook_url: 'DISCORD_WEBHOOK_LINUX',\n      color: 3066993\n    }\n  },\n  {\n    json: {\n      name: 'Gaming',\n      keywords: 'gaming+news+videospiele',\n      webhook_url: 'DISCORD_WEBHOOK_GAMING',\n      color: 10181046\n    }\n  }\n];"
+      },
+      "id": "node-topics",
+      "name": "Topics definieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "node-split",
+      "name": "Split in Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://news.google.com/rss/search?q={{ $json.keywords }}&hl=de&gl=DE&ceid=DE:de",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "node-rss",
+      "name": "Google News RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const xml = $input.item.json.data;\n\n// Artikel per Regex extrahieren\nconst itemRegex = /<item>([\\\s\\\S]*?)<\\/item>/g;\nconst titleRegex = /<title><![CDATA[([^\\]]*?)\\]\\]><\\/title>/;\nconst linkRegex = /<link>([^<]+)<\\/link>/;\nconst pubDateRegex = /<pubDate>([^<]+)<\\/pubDate>/;\nconst sourceRegex = /<source[^>]*>([^<]+)<\\/source>/;\n\nconst items = [];\nconst seenUrls = new Set();\nconst now = Date.now();\nconst oneDayMs = 24 * 60 * 60 * 1000;\n\nlet match;\nwhile ((match = itemRegex.exec(xml)) !== null) {\n  const itemXml = match[1];\n  \n  const titleMatch = titleRegex.exec(itemXml);\n  const linkMatch = linkRegex.exec(itemXml);\n  const pubDateMatch = pubDateRegex.exec(itemXml);\n  const sourceMatch = sourceRegex.exec(itemXml);\n  \n  if (!titleMatch || !linkMatch || !pubDateMatch) continue;\n  \n  const title = titleMatch[1].trim();\n  const url = linkMatch[1].trim();\n  const pubDate = new Date(pubDateMatch[1].trim());\n  const source = sourceMatch ? sourceMatch[1].trim() : 'Unbekannt';\n  \n  // Nur Artikel der letzten 24h\n  if (now - pubDate.getTime() > oneDayMs) continue;\n  \n  // Deduplizierung per URL\n  if (seenUrls.has(url)) continue;\n  seenUrls.add(url);\n  \n  items.push({\n    title,\n    url,\n    source,\n    published: pubDate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })\n  });\n  \n  if (items.length >= 10) break;\n}\n\nconst articlesText = items.map((a, i) =>\n  `${i + 1}. ${a.title} (${a.source}, ${a.published})\\n   URL: ${a.url}`\n).join('\\n\\n');\n\nreturn {\n  json: {\n    articles: articlesText,\n    articlesList: items,\n    count: items.length\n  }\n};"
+      },
+      "id": "node-parse",
+      "name": "RSS parsen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "ANTHROPIC_API_KEY_HIER_EINTRAGEN"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 1024,\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": \"Du bist ein News-Analyst. Analysiere diese aktuellen Nachrichten zum Thema {{ $('Split in Batches').item.json.name }} und erstelle:\\n1. Eine prägnante deutsche Zusammenfassung der wichtigsten Entwicklungen (max. 3 Sätze)\\n2. Die 3 wichtigsten Punkte als Bullet Points mit je einem Satz\\n\\nAntworte nur mit der Zusammenfassung und den Bullet Points, ohne Einleitung.\\n\\nNachrichten:\\n{{ $json.articles }}\"\n  }]\n}",
+        "options": {}
+      },
+      "id": "node-claude",
+      "name": "Claude Haiku API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Split in Batches').item.json.webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"embeds\": [{\n    \"title\": \"📰 {{ $('Split in Batches').item.json.name }} – News vom {{ $now.format('DD.MM.YYYY') }}\",\n    \"description\": \"{{ $json.content[0].text.replace(/\\\"/g, '\\\\\"') }}\",\n    \"color\": {{ $('Split in Batches').item.json.color }},\n    \"fields\": [\n      {\n        \"name\": \"📌 Artikel 1\",\n        \"value\": \"{{ $('RSS parsen').item.json.articlesList[0] ? '[' + $('RSS parsen').item.json.articlesList[0].title + '](' + $('RSS parsen').item.json.articlesList[0].url + ')' : 'Keine Artikel' }}\",\n        \"inline\": false\n      },\n      {\n        \"name\": \"📌 Artikel 2\",\n        \"value\": \"{{ $('RSS parsen').item.json.articlesList[1] ? '[' + $('RSS parsen').item.json.articlesList[1].title + '](' + $('RSS parsen').item.json.articlesList[1].url + ')' : '' }}\",\n        \"inline\": false\n      },\n      {\n        \"name\": \"📌 Artikel 3\",\n        \"value\": \"{{ $('RSS parsen').item.json.articlesList[2] ? '[' + $('RSS parsen').item.json.articlesList[2].title + '](' + $('RSS parsen').item.json.articlesList[2].url + ')' : '' }}\",\n        \"inline\": false\n      }\n    ],\n    \"footer\": {\n      \"text\": \"Powered by Claude Haiku + Google News | {{ $('RSS parsen').item.json.count }} Artikel gefunden\"\n    }\n  }]\n}",
+        "options": {}
+      },
+      "id": "node-discord",
+      "name": "Discord Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Topics definieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Topics definieren": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split in Batches": {
+      "main": [
+        [
+          {
+            "node": "Google News RSS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Google News RSS": {
+      "main": [
+        [
+          {
+            "node": "RSS parsen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS parsen": {
+      "main": [
+        [
+          {
+            "node": "Claude Haiku API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Haiku API": {
+      "main": [
+        [
+          {
+            "node": "Discord Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord Webhook": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "id": "o5arELTCG7jbyFxC",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

@@ -29,6 +29,11 @@ Täglicher automatischer News-Digest per Discord. Ein n8n-Workflow fetcht morgen
 2. Node "Topics definieren" → `DISCORD_WEBHOOK_KI_TECH`, `DISCORD_WEBHOOK_LINUX`, `DISCORD_WEBHOOK_GAMING` ersetzen
 3. Workflow aktivieren (Toggle in n8n UI)
 
+## Git Repository
+- **GitHub:** `icun99/daily-news-ai` (privat)
+- **Remote:** `gh-privat:icun99/daily-news-ai.git` (SSH-Alias in `~/.ssh/config`)
+- **Branch:** `main`
+
 ## Lokale Dateien
 - `workflow.json` – Backup/Referenz des deployten Workflows (enthält Workflow-ID)
 - `workflow-plan.md` – Ursprüngliche Architektur-Planung

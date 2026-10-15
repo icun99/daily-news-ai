@@ -1,33 +1,46 @@
 # Daily News Agent – Projekt-Kontext
 
 ## Ziel
-Täglicher automatischer News-Digest per Discord. Ein n8n-Workflow fetcht morgens Google News RSS, lässt Claude Haiku eine KI-Zusammenfassung erstellen und postet das Ergebnis als Discord Embed.
+Wöchentlicher automatischer News-Digest per Discord. Ein n8n-Workflow fetcht freitags die News der Woche via Perplexity AI (Sonar), erstellt einen deutschen KI-Digest und postet das Ergebnis als Discord Embed.
 
 ## Infrastruktur
-- **n8n Server:** https://n8n-ai-u47147.vm.elestio.app (Elestio, gehostet)
-- **MCP-Server:** n8n-mcp (global konfiguriert in ~/.claude/settings.json)
-- **KI-Modell:** claude-haiku-4-5-20251001 (~0,07 €/Monat für 3 Topics)
+- **n8n Server:** https://n.dennro.de (Selfhostet, gehostet)
+- **MCP-Server:** n8n-mcp, nur bei Bedarf per `claude mcp add n8n -s local -- ~/.local/bin/n8n-mcp-start dennro`
+- **News-API:** Perplexity Sonar (~$0.55/Monat für 3 Topics)
 
 ## Deployed Workflow
 - **ID:** `o5arELTCG7jbyFxC`
-- **Name:** Daily News Digest
-- **Status:** Deployt, inaktiv (Credentials fehlen noch)
+- **Name:** Weekly News Digest
+- **Status:** Deployed, aktiv
 - **Topics:** KI & Tech, Linux & Open Source, Gaming
-- **Trigger:** Täglich 09:00 Uhr
+- **Trigger:** Wöchentlich Freitags 13:00 Uhr (Cron: `0 13 * * 5`)
 
-## Workflow-Nodes (Reihenfolge)
-1. `Schedule Trigger` – 09:00 täglich
-2. `Topics definieren` – Code Node, gibt 3 Topics zurück (Name, Keywords, Webhook-URL, Farbe)
+## Workflow-Nodes (aktuell deployed, 7 Nodes)
+1. `Schedule Trigger` – Freitags 13:00 (Cron `0 13 * * 5`)
+2. `Topics definieren` – Code Node, gibt 3 Topics zurück (name, query, subtopics[], webhook_url, color, count)
 3. `Split in Batches` – batchSize 1, Loop zurück von Discord Webhook
-4. `Google News RSS` – HTTP GET, responseFormat: text
-5. `RSS parsen` – Code Node, Regex-Parsing, 24h-Filter, Top 10, Dedup per URL
-6. `Claude Haiku API` – HTTP POST zu `api.anthropic.com/v1/messages`
-7. `Discord Webhook` – HTTP POST, Discord Embed mit Summary + Top-3-Artikeln
+4. `Perplexity Request vorbereiten` – Code Node, baut Sonar API Body; subtopics werden als Pflicht-Verteilung übergeben
+5. `Perplexity API` – HTTP POST zu `api.perplexity.ai/chat/completions` (model: sonar, search_recency_filter: week)
+6. `Discord Payload vorbereiten` – Code Node, ersetzt [N]-Marker durch `[📖 Artikel lesen](url)`, Leerzeile nach jedem Item
+7. `Discord Webhook` – HTTP POST, Discord Embed
 
-## Noch ausstehend (User-Aktion)
-1. Node "Claude Haiku API" → Header `x-api-key` = echter Anthropic API Key
-2. Node "Topics definieren" → `DISCORD_WEBHOOK_KI_TECH`, `DISCORD_WEBHOOK_LINUX`, `DISCORD_WEBHOOK_GAMING` ersetzen
-3. Workflow aktivieren (Toggle in n8n UI)
+## Topics (aktuell)
+- **KI & Tech** – subtopics: Robotik, Large Language Models, KI-Regulierung – count: 5
+- **Linux & Open Source** – subtopics: Kernel-Updates, Distributionen, Open Source Projekte – count: 5
+- **Gaming** – subtopics: PC Gaming, Konsolen, Neue Releases – count: 5
+
+## Kosten
+- Perplexity: ~$0.55/Monat, Key ist im Node "Perplexity API" hinterlegt (https://www.perplexity.ai/settings/api)
+
+## Letzter Stand (15.10.2026, versionId: 4d1d4017)
+- Umzug auf neuen Discord-Server (3 neue Webhooks, je ein Kanal pro Topic) ✓
+- Auf wöchentlichen Freitags-Digest umgestellt ✓
+- Prompt: News der letzten Woche, Discord: "Wochenrückblick MO–FR" ✓
+- Workflow ist aktiv (active: true)
+
+## Credentials
+- Discord Webhooks: In "Topics definieren" hinterlegt (neuer Discord-Server seit 15.10.2026, ein Kanal pro Topic)
+- Perplexity API Key: In Node "Perplexity API" hinterlegt
 
 ## Git Repository
 - **GitHub:** `icun99/daily-news-ai` (privat)
@@ -39,8 +52,8 @@ Täglicher automatischer News-Digest per Discord. Ein n8n-Workflow fetcht morgen
 - `workflow-plan.md` – Ursprüngliche Architektur-Planung
 
 ## n8n API-Nutzung
-- MCP-Tools waren in der Session nicht verfügbar → direkter Zugriff via REST API (`curl`)
-- API Key in `~/.claude/settings.json` unter `mcpServers.n8n.env.N8N_API_KEY`
+- Direkter Zugriff via REST API (`curl`, Header `X-N8N-API-KEY`)
+- API Key in `~/.config/n8n-mcp/dennro.env` (N8N_API_KEY, chmod 600; nie ausgeben)
 - Wichtig: `active`-Feld ist bei POST `/api/v1/workflows` read-only (nicht mitsenden)
 
 ## MCP-Tools (konfiguriert, aber ggf. nicht in jeder Session aktiv)

@@ -1,122 +1,134 @@
 {
-  "name": "Daily News Digest",
+  "updatedAt": "2026-10-15T06:34:56.362Z",
+  "createdAt": "2026-03-11T14:38:31.687Z",
+  "id": "o5arELTCG7jbyFxC",
+  "name": "Weekly News Digest",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 24,
-              "triggerAtHour": 9,
-              "triggerAtMinute": 0
+              "field": "cronExpression",
+              "expression": "0 13 * * 5"
             }
           ]
         }
       },
-      "id": "node-schedule",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [240, 300]
+      "position": [
+        240,
+        304
+      ],
+      "id": "node-schedule-001"
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "return [\n  {\n    json: {\n      name: 'KI & Tech',\n      keywords: 'k%C3%BCnstliche+intelligenz+OR+AI+news+OR+machine+learning',\n      webhook_url: 'DISCORD_WEBHOOK_KI_TECH',\n      color: 5814783\n    }\n  },\n  {\n    json: {\n      name: 'Linux & Open Source',\n      keywords: 'Linux+open+source+news',\n      webhook_url: 'DISCORD_WEBHOOK_LINUX',\n      color: 3066993\n    }\n  },\n  {\n    json: {\n      name: 'Gaming',\n      keywords: 'gaming+news+videospiele',\n      webhook_url: 'DISCORD_WEBHOOK_GAMING',\n      color: 10181046\n    }\n  }\n];"
+        "jsCode": "return [\n  {\n    json: {\n      name: 'KI & Tech',\n      query: 'Künstliche Intelligenz LLMs Robotik KI-Regulierung',\n      subtopics: ['Robotik', 'Large Language Models', 'KI-Regulierung'],\n      count: 5,\n      webhook_url: 'https://discord.com/api/webhooks/1560177695877242880/c12QUaDdqC7fcl91X3fEvs7eIzCwGKPl6dMPNSF58LnR8mpHbaNbEcTWJAUdglfQT7XN',\n      color: 5814783\n    }\n  },\n  {\n    json: {\n      name: 'Linux & Open Source',\n      query: 'Linux Kernel Open Source Software Distributionen',\n      subtopics: ['Kernel-Updates', 'Distributionen', 'Open Source Projekte'],\n      count: 5,\n      webhook_url: 'https://discord.com/api/webhooks/1560177933606195270/485lMM4fwUO7uXaWKXiSJXyVY8E55Cijtfybqhlvz3vV14de0cTAfC8AlgD6wXBcLORg',\n      color: 3066993\n    }\n  },\n  {\n    json: {\n      name: 'Gaming',\n      query: 'PC Gaming Konsolenspiele Videospiele neue Releases Gaming News',\n      subtopics: ['PC Gaming', 'Konsolen', 'Neue Releases'],\n      count: 5,\n      webhook_url: 'https://discord.com/api/webhooks/1560177847903981708/2Wt9yokUHEOHHQG13hJQ5mdTR_f1hPTltp0sGEVzGLU3ZqNqo8gM5sFWhUuaUCymQktd',\n      color: 10181046\n    }\n  }\n];"
       },
-      "id": "node-topics",
       "name": "Topics definieren",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [
+        464,
+        304
+      ],
+      "id": "node-topics-002"
     },
     {
       "parameters": {
-        "batchSize": 1,
         "options": {}
       },
-      "id": "node-split",
       "name": "Split in Batches",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [680, 300]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "=https://news.google.com/rss/search?q={{ $json.keywords }}&hl=de&gl=DE&ceid=DE:de",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "text"
-            }
-          }
-        }
-      },
-      "id": "node-rss",
-      "name": "Google News RSS",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [900, 300]
+      "position": [
+        688,
+        304
+      ],
+      "id": "node-split-003"
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const xml = $input.item.json.data;\n\n// Artikel per Regex extrahieren\nconst itemRegex = /<item>([\\\s\\\S]*?)<\\/item>/g;\nconst titleRegex = /<title><![CDATA[([^\\]]*?)\\]\\]><\\/title>/;\nconst linkRegex = /<link>([^<]+)<\\/link>/;\nconst pubDateRegex = /<pubDate>([^<]+)<\\/pubDate>/;\nconst sourceRegex = /<source[^>]*>([^<]+)<\\/source>/;\n\nconst items = [];\nconst seenUrls = new Set();\nconst now = Date.now();\nconst oneDayMs = 24 * 60 * 60 * 1000;\n\nlet match;\nwhile ((match = itemRegex.exec(xml)) !== null) {\n  const itemXml = match[1];\n  \n  const titleMatch = titleRegex.exec(itemXml);\n  const linkMatch = linkRegex.exec(itemXml);\n  const pubDateMatch = pubDateRegex.exec(itemXml);\n  const sourceMatch = sourceRegex.exec(itemXml);\n  \n  if (!titleMatch || !linkMatch || !pubDateMatch) continue;\n  \n  const title = titleMatch[1].trim();\n  const url = linkMatch[1].trim();\n  const pubDate = new Date(pubDateMatch[1].trim());\n  const source = sourceMatch ? sourceMatch[1].trim() : 'Unbekannt';\n  \n  // Nur Artikel der letzten 24h\n  if (now - pubDate.getTime() > oneDayMs) continue;\n  \n  // Deduplizierung per URL\n  if (seenUrls.has(url)) continue;\n  seenUrls.add(url);\n  \n  items.push({\n    title,\n    url,\n    source,\n    published: pubDate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })\n  });\n  \n  if (items.length >= 10) break;\n}\n\nconst articlesText = items.map((a, i) =>\n  `${i + 1}. ${a.title} (${a.source}, ${a.published})\\n   URL: ${a.url}`\n).join('\\n\\n');\n\nreturn {\n  json: {\n    articles: articlesText,\n    articlesList: items,\n    count: items.length\n  }\n};"
+        "jsCode": "const item = $input.item.json;\nconst topicName = item.name;\nconst subtopics = item.subtopics || [];\nconst count = item.count || 3;\n\nconst subtopicsList = subtopics.map(s => `- ${s}`).join(\"\\n\");\n\nconst requestBody = {\n  model: \"sonar\",\n  search_recency_filter: \"week\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Du bist ein deutschsprachiger News-Kurator. Berichte präzise und faktisch auf Deutsch. Verwende ausschließlich Quellen der letzten 7 Tage.\"\n    },\n    {\n      role: \"user\",\n      content: `Finde die ${count} wichtigsten Neuigkeiten der letzten Woche im Bereich \"${topicName}\".\\n\\nPflicht: Mindestens 1 News pro Subtopic:\\n${subtopicsList}\\n\\nSuche danach eine skurrile oder witzige Nachricht aus dem Bereich \"${topicName}\" der letzten Woche.\\n\\nFormat – exakt so:\\n● **[Schlagzeile]**: [2-3 Sätze mit konkreten Fakten]\\n\\nFür den skurrilen/lustigen Eintrag als letztes:\\n● 🎭 **[Schlagzeile]**: [2-3 Sätze]\\n\\nNur die ${count + 1} Bullet Points ausgeben, keine Einleitung, kein Fazit.`\n    }\n  ]\n};\n\nreturn {\n  json: {\n    body: JSON.stringify(requestBody)\n  }\n};"
       },
-      "id": "node-parse",
-      "name": "RSS parsen",
+      "name": "Perplexity Request vorbereiten",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 300]
+      "position": [
+        912,
+        304
+      ],
+      "id": "node-perpprep-004"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
+        "url": "https://api.perplexity.ai/chat/completions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-api-key",
-              "value": "ANTHROPIC_API_KEY_HIER_EINTRAGEN"
+              "name": "Authorization",
+              "value": "Bearer PERPLEXITY_API_KEY_REDACTED"
             },
             {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
-              "name": "content-type",
+              "name": "Content-Type",
               "value": "application/json"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 1024,\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": \"Du bist ein News-Analyst. Analysiere diese aktuellen Nachrichten zum Thema {{ $('Split in Batches').item.json.name }} und erstelle:\\n1. Eine prägnante deutsche Zusammenfassung der wichtigsten Entwicklungen (max. 3 Sätze)\\n2. Die 3 wichtigsten Punkte als Bullet Points mit je einem Satz\\n\\nAntworte nur mit der Zusammenfassung und den Bullet Points, ohne Einleitung.\\n\\nNachrichten:\\n{{ $json.articles }}\"\n  }]\n}",
+        "jsonBody": "={{ $json.body }}",
         "options": {}
       },
-      "id": "node-claude",
-      "name": "Claude Haiku API",
+      "name": "Perplexity API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 300]
+      "position": [
+        1136,
+        304
+      ],
+      "id": "node-perp-005"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const response = $input.item.json;\nlet digestText = response.choices[0].message.content;\nconst citations = response.citations || [];\n\nconst lines = digestText.split(\"\\n\");\nconst result = [];\n\nfor (const line of lines) {\n  if (line.trim().startsWith(\"●\")) {\n    const refs = [...line.matchAll(/\\[(\\d+)\\]/g)];\n    const cleanLine = line.replace(/\\[\\d+\\]/g, \"\").trim();\n    result.push(cleanLine);\n    if (refs.length > 0) {\n      const idx = parseInt(refs[0][1]) - 1;\n      if (citations[idx]) {\n        result.push(`[📖 Artikel lesen](${citations[idx]})`);\n      }\n    }\n    result.push(\"\");\n  } else {\n    result.push(line.replace(/\\[\\d+\\]/g, \"\"));\n  }\n}\n\ndigestText = result.join(\"\\n\").replace(/\\n{3,}/g, \"\\n\\n\").trim();\n\nconst topicName = $(\"Split in Batches\").item.json.name;\nconst color = $(\"Split in Batches\").item.json.color;\nconst webhookUrl = $(\"Split in Batches\").item.json.webhook_url;\n\nconst now = new Date();\nconst monday = new Date(now);\nconst dayOfWeek = now.getDay();\nconst diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;\nmonday.setDate(now.getDate() - diffToMonday);\nconst weekStart = monday.toLocaleDateString(\"de-DE\", { day: \"2-digit\", month: \"2-digit\" });\nconst weekEnd = now.toLocaleDateString(\"de-DE\", { day: \"2-digit\", month: \"2-digit\", year: \"numeric\" });\n\nconst payload = {\n  embeds: [{\n    title: `📰 ${topicName} – Wochenrückblick ${weekStart}–${weekEnd}`,\n    description: digestText,\n    color: color,\n    footer: { text: `Powered by Perplexity AI (Sonar) • Wöchentlicher Digest` }\n  }]\n};\n\nreturn {\n  json: {\n    webhookUrl: webhookUrl,\n    body: JSON.stringify(payload)\n  }\n};"
+      },
+      "name": "Discord Payload vorbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        304
+      ],
+      "id": "node-payload-008"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $('Split in Batches').item.json.webhook_url }}",
+        "url": "={{ $json.webhookUrl }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"embeds\": [{\n    \"title\": \"📰 {{ $('Split in Batches').item.json.name }} – News vom {{ $now.format('DD.MM.YYYY') }}\",\n    \"description\": \"{{ $json.content[0].text.replace(/\\\"/g, '\\\\\"') }}\",\n    \"color\": {{ $('Split in Batches').item.json.color }},\n    \"fields\": [\n      {\n        \"name\": \"📌 Artikel 1\",\n        \"value\": \"{{ $('RSS parsen').item.json.articlesList[0] ? '[' + $('RSS parsen').item.json.articlesList[0].title + '](' + $('RSS parsen').item.json.articlesList[0].url + ')' : 'Keine Artikel' }}\",\n        \"inline\": false\n      },\n      {\n        \"name\": \"📌 Artikel 2\",\n        \"value\": \"{{ $('RSS parsen').item.json.articlesList[1] ? '[' + $('RSS parsen').item.json.articlesList[1].title + '](' + $('RSS parsen').item.json.articlesList[1].url + ')' : '' }}\",\n        \"inline\": false\n      },\n      {\n        \"name\": \"📌 Artikel 3\",\n        \"value\": \"{{ $('RSS parsen').item.json.articlesList[2] ? '[' + $('RSS parsen').item.json.articlesList[2].title + '](' + $('RSS parsen').item.json.articlesList[2].url + ')' : '' }}\",\n        \"inline\": false\n      }\n    ],\n    \"footer\": {\n      \"text\": \"Powered by Claude Haiku + Google News | {{ $('RSS parsen').item.json.count }} Artikel gefunden\"\n    }\n  }]\n}",
+        "jsonBody": "={{ $json.body }}",
         "options": {}
       },
-      "id": "node-discord",
       "name": "Discord Webhook",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1560, 300]
+      "position": [
+        1584,
+        304
+      ],
+      "id": "node-discord-007"
     }
   ],
   "connections": {
@@ -144,39 +156,39 @@
     },
     "Split in Batches": {
       "main": [
+        [],
         [
           {
-            "node": "Google News RSS",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        []
-      ]
-    },
-    "Google News RSS": {
-      "main": [
-        [
-          {
-            "node": "RSS parsen",
+            "node": "Perplexity Request vorbereiten",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "RSS parsen": {
+    "Perplexity Request vorbereiten": {
       "main": [
         [
           {
-            "node": "Claude Haiku API",
+            "node": "Perplexity API",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Claude Haiku API": {
+    "Perplexity API": {
+      "main": [
+        [
+          {
+            "node": "Discord Payload vorbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord Payload vorbereiten": {
       "main": [
         [
           {
@@ -199,9 +211,257 @@
       ]
     }
   },
-  "id": "o5arELTCG7jbyFxC",
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Berlin",
+    "binaryMode": "separate"
   },
-  "tags": []
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "4d1d4017-9704-4141-a63a-b3196f0aee00",
+  "activeVersionId": "4d1d4017-9704-4141-a63a-b3196f0aee00",
+  "versionCounter": 92,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-10-15T06:34:56.391Z",
+    "createdAt": "2026-10-15T06:34:56.391Z",
+    "versionId": "4d1d4017-9704-4141-a63a-b3196f0aee00",
+    "workflowId": "o5arELTCG7jbyFxC",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 13 * * 5"
+              }
+            ]
+          }
+        },
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          240,
+          304
+        ],
+        "id": "node-schedule-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "return [\n  {\n    json: {\n      name: 'KI & Tech',\n      query: 'Künstliche Intelligenz LLMs Robotik KI-Regulierung',\n      subtopics: ['Robotik', 'Large Language Models', 'KI-Regulierung'],\n      count: 5,\n      webhook_url: 'https://discord.com/api/webhooks/1560177695877242880/c12QUaDdqC7fcl91X3fEvs7eIzCwGKPl6dMPNSF58LnR8mpHbaNbEcTWJAUdglfQT7XN',\n      color: 5814783\n    }\n  },\n  {\n    json: {\n      name: 'Linux & Open Source',\n      query: 'Linux Kernel Open Source Software Distributionen',\n      subtopics: ['Kernel-Updates', 'Distributionen', 'Open Source Projekte'],\n      count: 5,\n      webhook_url: 'https://discord.com/api/webhooks/1560177933606195270/485lMM4fwUO7uXaWKXiSJXyVY8E55Cijtfybqhlvz3vV14de0cTAfC8AlgD6wXBcLORg',\n      color: 3066993\n    }\n  },\n  {\n    json: {\n      name: 'Gaming',\n      query: 'PC Gaming Konsolenspiele Videospiele neue Releases Gaming News',\n      subtopics: ['PC Gaming', 'Konsolen', 'Neue Releases'],\n      count: 5,\n      webhook_url: 'https://discord.com/api/webhooks/1560177847903981708/2Wt9yokUHEOHHQG13hJQ5mdTR_f1hPTltp0sGEVzGLU3ZqNqo8gM5sFWhUuaUCymQktd',\n      color: 10181046\n    }\n  }\n];"
+        },
+        "name": "Topics definieren",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          464,
+          304
+        ],
+        "id": "node-topics-002"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "name": "Split in Batches",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          688,
+          304
+        ],
+        "id": "node-split-003"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const item = $input.item.json;\nconst topicName = item.name;\nconst subtopics = item.subtopics || [];\nconst count = item.count || 3;\n\nconst subtopicsList = subtopics.map(s => `- ${s}`).join(\"\\n\");\n\nconst requestBody = {\n  model: \"sonar\",\n  search_recency_filter: \"week\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Du bist ein deutschsprachiger News-Kurator. Berichte präzise und faktisch auf Deutsch. Verwende ausschließlich Quellen der letzten 7 Tage.\"\n    },\n    {\n      role: \"user\",\n      content: `Finde die ${count} wichtigsten Neuigkeiten der letzten Woche im Bereich \"${topicName}\".\\n\\nPflicht: Mindestens 1 News pro Subtopic:\\n${subtopicsList}\\n\\nSuche danach eine skurrile oder witzige Nachricht aus dem Bereich \"${topicName}\" der letzten Woche.\\n\\nFormat – exakt so:\\n● **[Schlagzeile]**: [2-3 Sätze mit konkreten Fakten]\\n\\nFür den skurrilen/lustigen Eintrag als letztes:\\n● 🎭 **[Schlagzeile]**: [2-3 Sätze]\\n\\nNur die ${count + 1} Bullet Points ausgeben, keine Einleitung, kein Fazit.`\n    }\n  ]\n};\n\nreturn {\n  json: {\n    body: JSON.stringify(requestBody)\n  }\n};"
+        },
+        "name": "Perplexity Request vorbereiten",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          912,
+          304
+        ],
+        "id": "node-perpprep-004"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.perplexity.ai/chat/completions",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer PERPLEXITY_API_KEY_REDACTED"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json.body }}",
+          "options": {}
+        },
+        "name": "Perplexity API",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1136,
+          304
+        ],
+        "id": "node-perp-005"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const response = $input.item.json;\nlet digestText = response.choices[0].message.content;\nconst citations = response.citations || [];\n\nconst lines = digestText.split(\"\\n\");\nconst result = [];\n\nfor (const line of lines) {\n  if (line.trim().startsWith(\"●\")) {\n    const refs = [...line.matchAll(/\\[(\\d+)\\]/g)];\n    const cleanLine = line.replace(/\\[\\d+\\]/g, \"\").trim();\n    result.push(cleanLine);\n    if (refs.length > 0) {\n      const idx = parseInt(refs[0][1]) - 1;\n      if (citations[idx]) {\n        result.push(`[📖 Artikel lesen](${citations[idx]})`);\n      }\n    }\n    result.push(\"\");\n  } else {\n    result.push(line.replace(/\\[\\d+\\]/g, \"\"));\n  }\n}\n\ndigestText = result.join(\"\\n\").replace(/\\n{3,}/g, \"\\n\\n\").trim();\n\nconst topicName = $(\"Split in Batches\").item.json.name;\nconst color = $(\"Split in Batches\").item.json.color;\nconst webhookUrl = $(\"Split in Batches\").item.json.webhook_url;\n\nconst now = new Date();\nconst monday = new Date(now);\nconst dayOfWeek = now.getDay();\nconst diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;\nmonday.setDate(now.getDate() - diffToMonday);\nconst weekStart = monday.toLocaleDateString(\"de-DE\", { day: \"2-digit\", month: \"2-digit\" });\nconst weekEnd = now.toLocaleDateString(\"de-DE\", { day: \"2-digit\", month: \"2-digit\", year: \"numeric\" });\n\nconst payload = {\n  embeds: [{\n    title: `📰 ${topicName} – Wochenrückblick ${weekStart}–${weekEnd}`,\n    description: digestText,\n    color: color,\n    footer: { text: `Powered by Perplexity AI (Sonar) • Wöchentlicher Digest` }\n  }]\n};\n\nreturn {\n  json: {\n    webhookUrl: webhookUrl,\n    body: JSON.stringify(payload)\n  }\n};"
+        },
+        "name": "Discord Payload vorbereiten",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1360,
+          304
+        ],
+        "id": "node-payload-008"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $json.webhookUrl }}",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json.body }}",
+          "options": {}
+        },
+        "name": "Discord Webhook",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1584,
+          304
+        ],
+        "id": "node-discord-007"
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Topics definieren",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Topics definieren": {
+        "main": [
+          [
+            {
+              "node": "Split in Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split in Batches": {
+        "main": [
+          [],
+          [
+            {
+              "node": "Perplexity Request vorbereiten",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Perplexity Request vorbereiten": {
+        "main": [
+          [
+            {
+              "node": "Perplexity API",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Perplexity API": {
+        "main": [
+          [
+            {
+              "node": "Discord Payload vorbereiten",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Discord Payload vorbereiten": {
+        "main": [
+          [
+            {
+              "node": "Discord Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Discord Webhook": {
+        "main": [
+          [
+            {
+              "node": "Split in Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Dennis Rosenfeld",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-10-15T06:34:56.768Z",
+        "id": 3,
+        "workflowId": "o5arELTCG7jbyFxC",
+        "versionId": "4d1d4017-9704-4141-a63a-b3196f0aee00",
+        "event": "activated",
+        "userId": "ff71f9d7-9ed8-4dc3-ad39-413ab36077ca"
+      }
+    ]
+  }
 }
